@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luther : L'Exploration Interactive</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    
+    <!-- Chosen Palette: Calm Harmony (Stone, Muted Terracotta, Dark Slate) -->
+    <!-- Application Structure Plan: A thematic, single-page application with four main sections navigated via a fixed header: 'Introduction' (a landing page setting the tone), 'Parcours' (an interactive timeline of his career), 'Univers' (a filterable gallery of his lyrical references), and 'Sonorités' (a musical analysis with a comparative chart). This structure breaks down the dense report into digestible, engaging modules, allowing users to explore non-linearly. The interactive timeline and reference decoder are designed to transform static information into an exploratory experience, enhancing user understanding and engagement. -->
+    <!-- Visualization & Content Choices: 
+    - Career Path -> Goal: Change -> Viz: Interactive HTML/CSS Timeline -> Interaction: Click points to reveal project details -> Justification: Visualizes career progression dynamically.
+    - Musical Style -> Goal: Compare -> Viz: Chart.js Radar Chart -> Interaction: Hover to see stylistic scores -> Justification: Makes the abstract concept of sonic evolution tangible and easy to compare.
+    - Lyrical References -> Goal: Organize -> Viz: Filterable HTML/CSS Card Grid -> Interaction: Click filters to sort references by type -> Justification: Transforms a dense table into an interactive, user-driven database.
+    - Key Themes -> Goal: Inform -> Viz: Styled text blocks within context -> Interaction: Revealed on click/hover -> Justification: Provides context-rich information without overwhelming the user. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F8F4E3;
+            color: #404040;
+        }
+        .nav-link {
+            position: relative;
+            transition: color 0.3s;
+        }
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #D97706;
+            transition: width 0.3s;
+        }
+        .nav-link.active, .nav-link:hover {
+            color: #D97706;
+        }
+        .nav-link.active::after, .nav-link:hover::after {
+            width: 100%;
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -1px;
+            top: 2rem;
+            width: 2px;
+            height: calc(100% - 2rem);
+            background-color: #D1D5DB;
+        }
+        .timeline-item:last-child::before {
+            display: none;
+        }
+        .timeline-dot {
+            position: absolute;
+            left: -8px;
+            top: 2rem;
+            width: 18px;
+            height: 18px;
+            background-color: #F8F4E3;
+            border: 3px solid #D97706;
+            border-radius: 50%;
+            z-index: 10;
+        }
+        .card-flip {
+            perspective: 1000px;
+        }
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        .card-flip:hover .card-inner {
+            transform: rotateY(180deg);
+        }
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border-radius: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+        .card-back {
+            transform: rotateY(180deg);
+            background-color: #4A5568;
+            color: #F8F4E3;
+        }
+        .chart-container {
+            position: relative;
+            margin: auto;
+            height: 60vh;
+            max-height: 500px;
+            width: 100%;
+            max-width: 600px;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header class="bg-stone-100/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-black tracking-tighter text-stone-800">LUTHER</h1>
+            <div id="nav-links" class="hidden md:flex items-center space-x-8 text-sm font-semibold uppercase tracking-wider text-stone-600">
+                <a href="#introduction" data-section="introduction" class="nav-link active">Introduction</a>
+                <a href="#parcours" data-section="parcours" class="nav-link">Parcours</a>
+                <a href="#univers" data-section="univers" class="nav-link">Univers</a>
+                <a href="#sonorites" data-section="sonorites" class="nav-link">Sonorités</a>
+            </div>
+             <button id="mobile-menu-button" class="md:hidden text-stone-800">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            </button>
+        </nav>
+        <div id="mobile-menu" class="hidden md:hidden bg-stone-100 p-4">
+             <a href="#introduction" data-section="introduction" class="block py-2 text-center nav-link-mobile">Introduction</a>
+             <a href="#parcours" data-section="parcours" class="block py-2 text-center nav-link-mobile">Parcours</a>
+             <a href="#univers" data-section="univers" class="block py-2 text-center nav-link-mobile">Univers</a>
+             <a href="#sonorites" data-section="sonorites" class="block py-2 text-center nav-link-mobile">Sonorités</a>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-6 py-8 md:py-16">
+
+        <!-- Section Introduction -->
+        <section id="introduction" class="content-section active">
+            <div class="text-center max-w-4xl mx-auto">
+                <h2 class="text-4xl md:text-6xl font-black tracking-tighter text-stone-900 leading-tight">L'ÉNIGME LUTHER</h2>
+                <p class="mt-4 text-lg md:text-xl text-stone-700">Une histoire sans paroles, où la musique est l'unique biographie autorisée.</p>
+                <div class="mt-12 bg-white/60 p-8 rounded-xl shadow-lg border border-stone-200">
+                    <p class="text-2xl md:text-3xl font-semibold italic text-amber-700">« Pose pas d'questions sur ma vie, t'as qu'à écouter mes sons »</p>
+                    <p class="mt-2 text-sm text-stone-500">- Pk tu m'apl?</p>
+                </div>
+                <div class="mt-12 text-left text-base text-stone-800 leading-relaxed space-y-4">
+                    <p>Cette application interactive vous invite à plonger dans l'univers de Luther, un artiste qui a fait du mystère sa signature. En refusant systématiquement les interviews, il force son public à une analyse profonde de son œuvre. Chaque morceau, chaque punchline, chaque référence est un fragment de son histoire.</p>
+                    <p>Naviguez à travers les différentes sections pour décoder le parcours d'un pionnier de la "new wave" française, de ses débuts sur SoundCloud à sa métamorphose artistique, et découvrez comment son langage unique, puisé dans la culture numérique, raconte une vision du monde complexe et nuancée.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section Parcours -->
+        <section id="parcours" class="content-section">
+             <div class="text-center max-w-3xl mx-auto">
+                <h2 class="text-4xl md:text-5xl font-black tracking-tighter text-stone-900">Parcours</h2>
+                <p class="mt-4 text-lg text-stone-700">Une chronologie interactive de l'ascension de Luther, de l'ombre de SoundCloud à la lumière de la scène. Chaque étape est un projet, chaque projet est une évolution. Cliquez sur les points pour explorer.</p>
+            </div>
+            <div class="mt-16 max-w-5xl mx-auto">
+                <div id="timeline" class="relative border-l-2 border-stone-300 ml-4 py-4">
+                    <!-- Timeline items will be injected here by JS -->
+                </div>
+                <div id="timeline-details" class="mt-8">
+                     <!-- Details will be shown here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Section Univers -->
+        <section id="univers" class="content-section">
+            <div class="text-center max-w-3xl mx-auto">
+                <h2 class="text-4xl md:text-5xl font-black tracking-tighter text-stone-900">L'Univers Décodé</h2>
+                <p class="mt-4 text-lg text-stone-700">Le langage de Luther est un labyrinthe de références. Jeux vidéo, mangas, culture internet... chaque allusion est une clé. Explorez ce glossaire interactif pour déchiffrer les multiples couches de ses textes. Passez la souris sur une carte pour révéler sa signification.</p>
+            </div>
+            <div class="my-12 flex justify-center flex-wrap gap-2 md:gap-4">
+                <button class="filter-btn px-4 py-2 rounded-md font-semibold transition-colors duration-200" data-filter="all">Tous</button>
+                <button class="filter-btn px-4 py-2 rounded-md font-semibold transition-colors duration-200" data-filter="Jeu Vidéo">Jeu Vidéo</button>
+                <button class="filter-btn px-4 py-2 rounded-md font-semibold transition-colors duration-200" data-filter="Manga/Anime">Manga/Anime</button>
+                <button class="filter-btn px-4 py-2 rounded-md font-semibold transition-colors duration-200" data-filter="Pop Culture">Pop Culture</button>
+            </div>
+            <div id="references-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                <!-- Reference cards will be injected here by JS -->
+            </div>
+        </section>
+
+        <!-- Section Sonorités -->
+        <section id="sonorites" class="content-section">
+             <div class="text-center max-w-3xl mx-auto">
+                <h2 class="text-4xl md:text-5xl font-black tracking-tighter text-stone-900">Évolution Sonore</h2>
+                <p class="mt-4 text-lg text-stone-700">De la plugg music atmosphérique qui a défini la new wave à des productions électroniques radicales, le son de Luther est en perpétuelle mutation. Cette section analyse les styles qui ont marqué sa carrière et visualise sa transformation artistique.</p>
+            </div>
+            <div class="mt-16 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                <div class="space-y-6">
+                    <div>
+                        <h3 class="text-2xl font-bold text-amber-800">La Plugg Music</h3>
+                        <p class="mt-2 text-stone-800 leading-relaxed">Au coeur de la new wave, la plugg est un sous-genre de la trap caractérisé par une atmosphère rêveuse, des harmonies jazzy et des rythmiques éparses. Luther en a été l'un des pionniers en France, utilisant ses sonorités planantes comme véhicule parfait pour ses thèmes introspectifs et mélancoliques, notamment sur l'album <span class="font-bold">GARÇON</span>.</p>
+                    </div>
+                     <div>
+                        <h3 class="text-2xl font-bold text-amber-800">Le Virage Électronique</h3>
+                        <p class="mt-2 text-stone-800 leading-relaxed">Avec <span class="font-bold">EXIT</span>, Luther opère une rupture nette. Il délaisse la plugg pour des productions beaucoup plus pop, électroniques et "robotiques". Ce virage sonore n'est pas qu'une expérimentation : c'est un acte de "sortie", une fuite délibérée des attentes et de la case artistique que son succès a créées.</p>
+                    </div>
+                </div>
+                <div>
+                     <div class="chart-container">
+                        <canvas id="styleChart"></canvas>
+                    </div>
+                    <p class="text-center text-sm text-stone-500 mt-4">Comparaison des palettes sonores entre GARÇON (2022) et EXIT (2024).</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="text-center py-8 mt-16 border-t border-stone-200">
+        <p class="text-sm text-stone-500">Une exploration interactive basée sur le rapport "Luther : Portrait d'un Garçon de la New Wave".</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            const sections = document.querySelectorAll('.content-section');
+            const navLinks = document.querySelectorAll('#nav-links .nav-link');
+            const mobileNavLinks = document.querySelectorAll('#mobile-menu .nav-link-mobile');
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+
+            const timelineData = [
+                {
+                    year: '2020',
+                    title: 'Trame',
+                    type: 'Album SoundCloud',
+                    description: "Premières fondations de son univers. Un projet de 'bedroom producer' qui mêle trap, cloud rap et surtout plugg. Contient une collaboration notable avec BU\$HI.",
+                    color: 'bg-sky-200', textColor: 'text-sky-800'
+                },
+                {
+                    year: '2021',
+                    title: 'IDD',
+                    type: 'EP SoundCloud',
+                    description: "Confirmation de son identité artistique. Le morceau 'Yuto & Yugi' établit la dualité comme un pilier fondamental de son œuvre, une thématique qui irriguera tous ses projets futurs.",
+                    color: 'bg-indigo-200', textColor: 'text-indigo-800'
+                },
+                {
+                    year: '2022',
+                    title: 'GARÇON',
+                    type: 'Album Studio (Sublime)',
+                    description: "Le projet de la consécration, certifié disque d'or. Une exploration de la nuance et un rejet de la pensée binaire, fortement inspiré par la morale du jeu vidéo Undertale. Luther devient la figure de proue de la new wave.",
+                    color: 'bg-emerald-200', textColor: 'text-emerald-800'
+                },
+                {
+                    year: '2023',
+                    title: 'AMI',
+                    type: 'EP (Sublime)',
+                    description: "Un EP de 3 titres qui sert de pont conceptuel. La référence à l'antagoniste masqué du manga '20th Century Boys' renforce son propre mystère et explore les tourments de la célébrité naissante.",
+                    color: 'bg-slate-200', textColor: 'text-slate-800'
+                },
+                {
+                    year: '2024',
+                    title: 'EXIT',
+                    type: 'Album Studio (Sublime)',
+                    description: "Une rupture stylistique radicale. L'album abandonne la plugg pour des sonorités pop et électroniques. Thématiquement, il explore la désillusion et le besoin de s'échapper ('exit') des attentes.",
+                    color: 'bg-rose-200', textColor: 'text-rose-800'
+                }
+            ];
+
+            const referencesData = [
+                { name: 'Papyrus & Toriel', category: 'Jeu Vidéo', source: 'Undertale', explanation: "Symboles de la nuance et de la dualité bienveillante. Papyrus veut capturer le joueur mais désire son amitié. Toriel est une figure protectrice. Luther les utilise pour explorer la complexité des sentiments.", punchline: "« J'suis amoureux de c'que j'déteste, j'suis comme Papyrus »" },
+                { name: 'Gorons', category: 'Jeu Vidéo', source: 'The Legend of Zelda', explanation: "Ces créatures mangeuses de pierres aux yeux rouges sont une métaphore élaborée pour la consommation de cannabis.", punchline: "Titre du morceau : « ROUGE GORON »" },
+                { name: 'Toplaner', category: 'Jeu Vidéo', source: 'League of Legends', explanation: "Rôle de joueur souvent isolé sur la carte. Luther l'utilise comme métaphore de son individualisme et de son indépendance artistique.", punchline: "« J'ai l'mental à un toplaner »" },
+                { name: 'Silverfish', category: 'Jeu Vidéo', source: 'Minecraft', explanation: "Créatures hostiles cachées dans des blocs. Évoque un sentiment d'être piégé, caché et potentiellement nuisible dans son propre environnement.", punchline: "« J'suis un silverfish dans un bloc de mossy »" },
+                { name: 'Yuto & Yugi', category: 'Manga/Anime', source: 'Yu-Gi-Oh!', explanation: "Le protagoniste Yugi partage son corps avec l'esprit d'un pharaon. La référence fondatrice du thème de la dualité chez Luther.", punchline: "« Deux personnalités en une seule tête »" },
+                { name: 'Ami', category: 'Manga/Anime', source: '20th Century Boys', explanation: "L'antagoniste est un leader de secte masqué et énigmatique. Luther joue avec cette image pour son EP, renforçant son propre anonymat et son statut de figure culte.", punchline: "Titre de l'EP : « AMI »" },
+                { name: 'Carte du Maraudeur', category: 'Pop Culture', source: 'Harry Potter', explanation: "Il détourne la célèbre formule « Je jure solennellement que mes intentions sont mauvaises » pour exprimer une conscience cynique du potentiel corrupteur du pouvoir.", punchline: "« J'veux l'pouvoir, j'jure qu'les intentions sont mauvaises »" },
+                { name: 'Pierre-Feuille-Ciseaux', category: 'Pop Culture', source: 'Jeu universel', explanation: "Métaphore simple et puissante du regret, de la jeunesse et du sentiment d'avoir fait le mauvais choix face aux aléas de la vie.", punchline: "« La vie a fait feuille comme un con j'ai fait pierre »" },
+            ];
+
+            function switchSection(sectionId) {
+                sections.forEach(section => {
+                    section.style.display = 'none';
+                    section.classList.remove('active');
+                });
+                const activeSection = document.getElementById(sectionId);
+                if (activeSection) {
+                    activeSection.style.display = 'block';
+                    activeSection.classList.add('active');
+                }
+
+                navLinks.forEach(link => {
+                    link.classList.toggle('active', link.getAttribute('href') === `#${sectionId}`);
+                });
+            }
+
+            function setupNav(links) {
+                links.forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const sectionId = link.getAttribute('data-section');
+                        switchSection(sectionId);
+                        if (mobileMenu.classList.contains('hidden') === false) {
+                           mobileMenu.classList.add('hidden');
+                        }
+                    });
+                });
+            }
+            
+            setupNav(navLinks);
+            setupNav(mobileNavLinks);
+
+            mobileMenuButton.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+
+            const timelineContainer = document.getElementById('timeline');
+            const timelineDetailsContainer = document.getElementById('timeline-details');
+            
+            timelineData.forEach((item, index) => {
+                const timelineItem = document.createElement('div');
+                timelineItem.className = 'timeline-item relative pl-8 pb-12 cursor-pointer';
+                timelineItem.dataset.index = index;
+                
+                timelineItem.innerHTML = `
+                    <div class="timeline-dot"></div>
+                    <p class="text-sm text-amber-700 font-semibold">${item.year}</p>
+                    <h3 class="text-xl font-bold text-stone-800">${item.title}</h3>
+                    <p class="text-md text-stone-600">${item.type}</p>
+                `;
+
+                timelineItem.addEventListener('click', () => {
+                    const data = timelineData[index];
+                    timelineDetailsContainer.innerHTML = `
+                        <div class="bg-white p-6 rounded-lg shadow-md border border-stone-200 transition-all duration-300">
+                           <div class="flex items-center gap-4 mb-3">
+                             <span class="px-3 py-1 text-sm font-semibold rounded-full ${data.color} ${data.textColor}">${data.type}</span>
+                             <h3 class="text-2xl font-bold text-stone-800">${data.title} (${data.year})</h3>
+                           </div>
+                            <p class="text-stone-700 leading-relaxed">${data.description}</p>
+                        </div>
+                    `;
+                });
+
+                timelineContainer.appendChild(timelineItem);
+            });
+            
+            if(timelineContainer.firstElementChild){
+                 timelineContainer.firstElementChild.click();
+            }
+
+            const referencesGrid = document.getElementById('references-grid');
+            const filterBtns = document.querySelectorAll('.filter-btn');
+
+            function displayReferences(filter) {
+                referencesGrid.innerHTML = '';
+                const filteredData = (filter === 'all') ? referencesData : referencesData.filter(item => item.category === filter);
+
+                filteredData.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'card-flip h-48 rounded-lg shadow-lg';
+                    card.dataset.category = item.category;
+
+                    card.innerHTML = `
+                        <div class="card-inner">
+                            <div class="card-front bg-white border border-stone-200 text-center">
+                                <h4 class="text-lg font-bold text-stone-800">${item.name}</h4>
+                                <p class="text-sm text-amber-700">${item.source}</p>
+                            </div>
+                            <div class="card-back text-center">
+                                <p class="text-sm leading-snug">${item.explanation}</p>
+                                ${item.punchline ? `<p class="mt-2 text-xs italic opacity-80">${item.punchline}</p>` : ''}
+                            </div>
+                        </div>
+                    `;
+                    referencesGrid.appendChild(card);
+                });
+            }
+
+            function setActiveFilterButton(activeBtn) {
+                filterBtns.forEach(btn => {
+                    btn.classList.remove('active', 'bg-amber-600', 'text-white');
+                    btn.classList.add('bg-white', 'text-stone-700', 'hover:bg-stone-100');
+                });
+                
+                activeBtn.classList.remove('bg-white', 'text-stone-700', 'hover:bg-stone-100');
+                activeBtn.classList.add('active', 'bg-amber-600', 'text-white');
+            }
+
+            filterBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    setActiveFilterButton(btn);
+                    displayReferences(btn.dataset.filter);
+                });
+            });
+
+            displayReferences('all');
+            const initialButton = document.querySelector('.filter-btn[data-filter="all"]');
+            if (initialButton) {
+                setActiveFilterButton(initialButton);
+            }
+
+
+            const ctx = document.getElementById('styleChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Plugg', 'Mélodique', 'Introspectif', 'Électronique', 'Pop', 'Trap'],
+                    datasets: [{
+                        label: 'GARÇON (2022)',
+                        data: [9, 8, 9, 2, 3, 5],
+                        backgroundColor: 'rgba(5, 150, 105, 0.2)',
+                        borderColor: 'rgba(5, 150, 105, 1)',
+                        pointBackgroundColor: 'rgba(5, 150, 105, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(5, 150, 105, 1)',
+                        borderWidth: 2
+                    }, {
+                        label: 'EXIT (2024)',
+                        data: [2, 7, 8, 9, 8, 3],
+                        backgroundColor: 'rgba(225, 29, 72, 0.2)',
+                        borderColor: 'rgba(225, 29, 72, 1)',
+                        pointBackgroundColor: 'rgba(225, 29, 72, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(225, 29, 72, 1)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    responsive: true,
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(0, 0, 0, 0.1)' },
+                            grid: { color: 'rgba(0, 0, 0, 0.1)' },
+                            pointLabels: { 
+                                font: { size: 12, weight: 'bold' },
+                                color: '#404040'
+                            },
+                            ticks: {
+                                backdropColor: 'transparent',
+                                color: '#808080'
+                            },
+                            suggestedMin: 0,
+                            suggestedMax: 10
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                color: '#404040',
+                                font: {
+                                    size: 14
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        
+            switchSection('introduction');
+        });
+    </script>
+</body>
+</html>
