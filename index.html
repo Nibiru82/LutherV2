@@ -123,6 +123,9 @@
         .gemini-btn {
             background-image: linear-gradient(to right, #4F46E5, #3B82F6);
         }
+        #chat-widget.hidden, #chat-container.hidden {
+            display: none;
+        }
     </style>
 </head>
 <body class="antialiased">
@@ -148,14 +151,23 @@
         </div>
     </header>
     
-    <div id="apiKeyBanner" class="container mx-auto px-6 pt-6">
-        <div class="bg-blue-900/50 border-l-4 border-blue-500 text-blue-300 p-4 rounded-md" role="alert">
-            <p class="font-bold">Action requise pour l'IA</p>
+    <div class="container mx-auto px-6 pt-6 space-y-4">
+        <div id="apiKeyBanner" class="bg-blue-900/50 border-l-4 border-blue-500 text-blue-300 p-4 rounded-md" role="alert">
+            <p class="font-bold">Action requise pour l'IA Gemini</p>
             <p>Pour utiliser les fonctions d'analyse, veuillez entrer votre clé API Gemini. Obtenez-en une gratuitement sur <a href="https://aistudio.google.com/app/apikey" target="_blank" class="underline font-semibold">Google AI Studio</a>.</p>
             <div class="mt-3 flex items-center gap-2">
-                <input type="password" id="apiKeyInput" placeholder="Collez votre clé API ici" class="p-2 rounded-md border border-gray-600 w-full md:w-1/2 bg-gray-800 text-gray-200 placeholder-gray-500">
+                <input type="password" id="apiKeyInput" placeholder="Collez votre clé API Gemini" class="p-2 rounded-md border border-gray-600 w-full md:w-1/2 bg-gray-800 text-gray-200 placeholder-gray-500">
                 <button id="saveApiKeyBtn" class="bg-blue-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center w-32">Sauvegarder</button>
                 <span id="apiKeyStatus" class="font-semibold"></span>
+            </div>
+        </div>
+         <div id="firebaseConfigBanner" class="bg-purple-900/50 border-l-4 border-purple-500 text-purple-300 p-4 rounded-md" role="alert">
+            <p class="font-bold">Action requise pour le Chat</p>
+            <p>Pour activer le chat, vous devez fournir votre configuration Firebase. Créez un projet sur <a href="https://console.firebase.google.com/" target="_blank" class="underline font-semibold">Firebase</a>, ajoutez une application web, puis collez l'objet de configuration ci-dessous.</p>
+            <div class="mt-3 flex flex-col gap-2">
+                <textarea id="firebaseConfigInput" placeholder='Collez votre objet de configuration Firebase ici (ex: { apiKey: "...", ... })' class="p-2 rounded-md border border-gray-600 w-full bg-gray-800 text-gray-200 placeholder-gray-500 font-mono text-xs" rows="4"></textarea>
+                <button id="saveFirebaseConfigBtn" class="bg-purple-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-purple-700 transition-colors flex items-center justify-center w-48">Activer le Chat</button>
+                <span id="firebaseConfigStatus" class="font-semibold"></span>
             </div>
         </div>
     </div>
@@ -239,21 +251,74 @@
         </section>
 
     </main>
+    
+    <!-- Chat Widget -->
+    <div id="chat-widget" class="fixed bottom-5 right-5 z-50 cursor-pointer hidden">
+        <div class="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center shadow-lg hover:bg-blue-700 transition-colors">
+             <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+        </div>
+    </div>
 
-    <footer class="text-center py-8 mt-16 border-t border-gray-800">
-        <p class="text-sm text-gray-500">Une exploration interactive basée sur le rapport "Luther : Portrait d'un Garçon de la New Wave".</p>
-    </footer>
+    <!-- Chat Container -->
+    <div id="chat-container" class="fixed bottom-24 right-5 w-80 h-96 bg-gray-800 rounded-lg shadow-2xl flex flex-col hidden z-50 border border-gray-700">
+        <div class="p-3 bg-gray-900 rounded-t-lg flex justify-between items-center">
+            <h3 class="font-bold text-white">Chat en direct</h3>
+            <button id="close-chat-btn" class="text-gray-400 hover:text-white">&times;</button>
+        </div>
+        <div id="chat-messages" class="flex-1 p-3 overflow-y-auto space-y-2">
+            <!-- Messages will appear here -->
+        </div>
+        <form id="chat-form" class="p-3 border-t border-gray-700 flex gap-2">
+            <input id="chat-input" type="text" placeholder="Écrivez un message..." class="flex-1 p-2 bg-gray-700 rounded-md text-gray-200 placeholder-gray-500 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <button type="submit" class="bg-blue-600 px-4 rounded-md text-white font-semibold hover:bg-blue-700">Envoyer</button>
+        </form>
+    </div>
 
-    <script>
+    <!-- Username Modal -->
+    <div id="username-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center hidden">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-2xl w-80 border border-gray-700">
+             <h3 class="font-bold text-white text-lg mb-4">Définir un pseudo</h3>
+             <form id="username-form" class="flex flex-col gap-3">
+                 <input id="username-input" type="text" placeholder="Entrez votre pseudo" maxlength="15" class="p-2 bg-gray-700 rounded-md text-gray-200 placeholder-gray-500 border border-gray-600" required>
+                 <button type="submit" class="bg-blue-600 p-2 rounded-md text-white font-semibold hover:bg-blue-700">Commencer à chatter</button>
+             </form>
+        </div>
+    </div>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, where, onSnapshot, serverTimestamp, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
         document.addEventListener('DOMContentLoaded', () => {
             
             let userApiKey = "";
+            let db;
+            let messagesCol;
+            let username = localStorage.getItem('luther_chat_username');
 
             const apiKeyInput = document.getElementById('apiKeyInput');
             const saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
             const apiKeyStatus = document.getElementById('apiKeyStatus');
             const apiKeyBanner = document.getElementById('apiKeyBanner');
+            
+            const firebaseConfigInput = document.getElementById('firebaseConfigInput');
+            const saveFirebaseConfigBtn = document.getElementById('saveFirebaseConfigBtn');
+            const firebaseConfigStatus = document.getElementById('firebaseConfigStatus');
+            const firebaseConfigBanner = document.getElementById('firebaseConfigBanner');
 
+            const chatWidget = document.getElementById('chat-widget');
+            const chatContainer = document.getElementById('chat-container');
+            const closeChatBtn = document.getElementById('close-chat-btn');
+            const chatForm = document.getElementById('chat-form');
+            const chatInput = document.getElementById('chat-input');
+            const chatMessages = document.getElementById('chat-messages');
+
+            const usernameModal = document.getElementById('username-modal');
+            const usernameForm = document.getElementById('username-form');
+            const usernameInput = document.getElementById('username-input');
+
+            // --- Gemini API Key Logic ---
             async function validateApiKey(key) {
                 const validationUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`;
                 const payload = { contents: [{ parts: [{ text: "hello" }] }] };
@@ -298,6 +363,37 @@
                     setTimeout(() => {
                         apiKeyStatus.textContent = '';
                     }, 3000);
+                }
+            });
+
+            // --- Firebase Config Logic ---
+            saveFirebaseConfigBtn.addEventListener('click', async () => {
+                const configText = firebaseConfigInput.value.trim();
+                if (!configText) {
+                    firebaseConfigStatus.textContent = '❌ Config requise';
+                    return;
+                }
+
+                try {
+                    const firebaseConfig = JSON.parse(configText);
+                    const app = initializeApp(firebaseConfig);
+                    const auth = getAuth(app);
+                    db = getFirestore(app);
+                    await signInAnonymously(auth);
+                    
+                    messagesCol = collection(db, "luther_chat_messages");
+                    initChat();
+
+                    firebaseConfigBanner.style.transition = 'opacity 0.5s ease-out, transform 0.5s ease-out';
+                    firebaseConfigBanner.style.opacity = '0';
+                    firebaseConfigBanner.style.transform = 'translateY(-20px)';
+                    setTimeout(() => {
+                        firebaseConfigBanner.style.display = 'none';
+                    }, 500);
+
+                } catch (e) {
+                    console.error("Firebase initialization failed:", e);
+                    firebaseConfigStatus.textContent = '❌ Config invalide';
                 }
             });
 
@@ -388,7 +484,84 @@
                 { name: 'Carte du Maraudeur', category: 'Pop Culture', source: 'Harry Potter', explanation: "Il détourne la célèbre formule « Je jure solennellement que mes intentions sont mauvaises » pour exprimer une conscience cynique du potentiel corrupteur du pouvoir.", punchline: "« J'veux l'pouvoir, j'jure qu'les intentions sont mauvaises »" },
                 { name: 'Pierre-Feuille-Ciseaux', category: 'Pop Culture', source: 'Jeu universel', explanation: "Métaphore simple et puissante du regret, de la jeunesse et du sentiment d'avoir fait le mauvais choix face aux aléas de la vie.", punchline: "« La vie a fait feuille comme un con j'ai fait pierre »" },
             ];
+            
+            // --- Chat Logic ---
+            const bannedWords = ['merde', 'con', 'salope', 'putain', 'fdp']; 
+            
+            function profanityFilter(text) {
+                let cleanText = text;
+                bannedWords.forEach(word => {
+                    const regex = new RegExp(`\\b${word}\\b`, 'gi');
+                    cleanText = cleanText.replace(regex, '***');
+                });
+                return cleanText;
+            }
+            
+            function initChat() {
+                chatWidget.classList.remove('hidden');
 
+                if (!username) {
+                    usernameModal.classList.remove('hidden');
+                }
+                
+                chatWidget.addEventListener('click', () => {
+                    chatContainer.classList.remove('hidden');
+                    chatWidget.classList.add('hidden');
+                });
+
+                closeChatBtn.addEventListener('click', () => {
+                    chatContainer.classList.add('hidden');
+                    chatWidget.classList.remove('hidden');
+                });
+
+                usernameForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const newUsername = usernameInput.value.trim();
+                    if (newUsername) {
+                        username = newUsername;
+                        localStorage.setItem('luther_chat_username', username);
+                        usernameModal.classList.add('hidden');
+                    }
+                });
+
+                chatForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const text = chatInput.value.trim();
+                    if (text && username) {
+                        const cleanText = profanityFilter(text);
+                        try {
+                            await addDoc(messagesCol, {
+                                text: cleanText,
+                                username: username,
+                                createdAt: serverTimestamp()
+                            });
+                            chatInput.value = '';
+                        } catch (error) {
+                            console.error("Error sending message: ", error);
+                        }
+                    }
+                });
+
+                const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+                const q = query(messagesCol, where("createdAt", ">=", thirtyMinutesAgo), orderBy("createdAt", "desc"));
+                
+                onSnapshot(q, (snapshot) => {
+                    chatMessages.innerHTML = '';
+                    const messages = [];
+                    snapshot.forEach(doc => {
+                        messages.push(doc.data());
+                    });
+                    
+                    messages.reverse().forEach(data => {
+                        const messageEl = document.createElement('div');
+                        messageEl.innerHTML = `<span class="font-bold text-blue-400">${data.username || 'Anonyme'}:</span> <span class="text-gray-300">${data.text}</span>`;
+                        chatMessages.appendChild(messageEl);
+                    });
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                });
+            }
+
+            // --- Main App Logic ---
             function switchSection(sectionId) {
                 sections.forEach(section => {
                     section.style.display = 'none';
