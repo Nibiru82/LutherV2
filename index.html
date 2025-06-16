@@ -4,21 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Luther : L'Exploration Interactive</title>
+    <!-- Ligne pour l'icône de l'onglet (favicon) -->
+    <link rel="icon" type="image/png" href="nibiru logo rap site.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
     
-    <!-- Chosen Palette: Calm Harmony (Stone, Muted Terracotta, Dark Slate) -->
-    <!-- Application Structure Plan: A thematic, single-page application with four main sections navigated via a fixed header: 'Introduction' (a landing page setting the tone), 'Parcours' (an interactive timeline of his career), 'Univers' (a filterable gallery of his lyrical references), and 'Sonorités' (a musical analysis with a comparative chart). This structure breaks down the dense report into digestible, engaging modules, allowing users to explore non-linearly. The interactive timeline and reference decoder are designed to transform static information into an exploratory experience, enhancing user understanding and engagement. -->
-    <!-- Visualization & Content Choices: 
-    - Career Path -> Goal: Change -> Viz: Interactive HTML/CSS Timeline -> Interaction: Click points to reveal project details -> Justification: Visualizes career progression dynamically.
-    - Musical Style -> Goal: Compare -> Viz: Chart.js Radar Chart -> Interaction: Hover to see stylistic scores -> Justification: Makes the abstract concept of sonic evolution tangible and easy to compare.
-    - Lyrical References -> Goal: Organize -> Viz: Filterable HTML/CSS Card Grid -> Interaction: Click filters to sort references by type -> Justification: Transforms a dense table into an interactive, user-driven database.
-    - Key Themes -> Goal: Inform -> Viz: Styled text blocks within context -> Interaction: Revealed on click/hover -> Justification: Provides context-rich information without overwhelming the user. -->
-    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
-
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -99,6 +92,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            padding: 0.75rem;
         }
         .card-back {
             transform: rotateY(180deg);
@@ -110,6 +104,18 @@
             max-height: 500px;
             width: 100%;
             max-width: 600px;
+        }
+        .loader {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #D97706;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
@@ -149,7 +155,7 @@
                 </div>
                 <div class="mt-12 text-left text-base text-stone-800 leading-relaxed space-y-4">
                     <p>Cette application interactive vous invite à plonger dans l'univers de Luther, un artiste qui a fait du mystère sa signature. En refusant systématiquement les interviews, il force son public à une analyse profonde de son œuvre. Chaque morceau, chaque punchline, chaque référence est un fragment de son histoire.</p>
-                    <p>Naviguez à travers les différentes sections pour décoder le parcours d'un pionnier de la "new wave" française, de ses débuts sur SoundCloud à sa métamorphose artistique, et découvrez comment son langage unique, puisé dans la culture numérique, raconte une vision du monde complexe et nuancée.</p>
+                    <p>Découvrez les nouvelles fonctionnalités optimisées par l'IA Gemini : générez des analyses de projets dans la section "Parcours" et analysez en profondeur les punchlines dans la section "Univers" pour une immersion totale.</p>
                 </div>
             </div>
         </section>
@@ -158,7 +164,7 @@
         <section id="parcours" class="content-section">
              <div class="text-center max-w-3xl mx-auto">
                 <h2 class="text-4xl md:text-5xl font-black tracking-tighter text-stone-900">Parcours</h2>
-                <p class="mt-4 text-lg text-stone-700">Une chronologie interactive de l'ascension de Luther, de l'ombre de SoundCloud à la lumière de la scène. Chaque étape est un projet, chaque projet est une évolution. Cliquez sur les points pour explorer.</p>
+                <p class="mt-4 text-lg text-stone-700">Une chronologie interactive de l'ascension de Luther. Cliquez sur les points pour explorer et générez une analyse par l'IA pour chaque projet.</p>
             </div>
             <div class="mt-16 max-w-5xl mx-auto">
                 <div id="timeline" class="relative border-l-2 border-stone-300 ml-4 py-4">
@@ -174,7 +180,7 @@
         <section id="univers" class="content-section">
             <div class="text-center max-w-3xl mx-auto">
                 <h2 class="text-4xl md:text-5xl font-black tracking-tighter text-stone-900">L'Univers Décodé</h2>
-                <p class="mt-4 text-lg text-stone-700">Le langage de Luther est un labyrinthe de références. Jeux vidéo, mangas, culture internet... chaque allusion est une clé. Explorez ce glossaire interactif pour déchiffrer les multiples couches de ses textes. Passez la souris sur une carte pour révéler sa signification.</p>
+                <p class="mt-4 text-lg text-stone-700">Le langage de Luther est un labyrinthe de références. Retournez une carte pour découvrir son explication, puis cliquez sur le bouton ✨ pour obtenir une analyse approfondie de la punchline par l'IA.</p>
             </div>
             <div class="my-12 flex justify-center flex-wrap gap-2 md:gap-4">
                 <button class="filter-btn px-4 py-2 rounded-md font-semibold transition-colors duration-200" data-filter="all">Tous</button>
@@ -221,6 +227,41 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+
+            const API_KEY = ""; // Laissez vide, la clé est gérée par l'environnement d'exécution
+
+            async function fetchFromGemini(prompt) {
+                const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+                const payload = { contents: chatHistory };
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
+                
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`API error: ${response.statusText}`);
+                    }
+
+                    const result = await response.json();
+                    
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        return result.candidates[0].content.parts[0].text;
+                    } else {
+                        console.error('Unexpected API response structure:', result);
+                        return "Désolé, la réponse de l'IA est invalide.";
+                    }
+                } catch (error) {
+                    console.error('Error calling Gemini API:', error);
+                    return "Une erreur est survenue lors de la communication avec l'IA.";
+                }
+            }
+
 
             const sections = document.querySelectorAll('.content-section');
             const navLinks = document.querySelectorAll('#nav-links .nav-link');
@@ -319,7 +360,6 @@
             timelineData.forEach((item, index) => {
                 const timelineItem = document.createElement('div');
                 timelineItem.className = 'timeline-item relative pl-8 pb-12 cursor-pointer';
-                timelineItem.dataset.index = index;
                 
                 timelineItem.innerHTML = `
                     <div class="timeline-dot"></div>
@@ -337,8 +377,28 @@
                              <h3 class="text-2xl font-bold text-stone-800">${data.title} (${data.year})</h3>
                            </div>
                             <p class="text-stone-700 leading-relaxed">${data.description}</p>
+                            <div class="mt-4">
+                                <button class="gemini-project-btn bg-amber-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-amber-700 transition-colors flex items-center gap-2">
+                                    ✨ Générer une analyse
+                                </button>
+                                <div class="gemini-project-output mt-4 text-sm text-stone-600 border-l-4 border-amber-500 pl-4" style="display: none;"></div>
+                           </div>
                         </div>
                     `;
+                    const geminiBtn = timelineDetailsContainer.querySelector('.gemini-project-btn');
+                    const outputDiv = timelineDetailsContainer.querySelector('.gemini-project-output');
+
+                    geminiBtn.addEventListener('click', async () => {
+                        geminiBtn.disabled = true;
+                        outputDiv.style.display = 'block';
+                        outputDiv.innerHTML = '<div class="flex items-center gap-2"><div class="loader"></div><span>Analyse en cours...</span></div>';
+
+                        const prompt = `Rédige une courte analyse (environ 50-70 mots) de l'album '${data.title}' du rappeur français Luther, en te basant sur cette description : '${data.description}'. Mets en lumière les thèmes principaux et l'ambiance sonore. Le ton doit être perspicace et informatif, comme celui d'un critique musical.`;
+                        const result = await fetchFromGemini(prompt);
+                        outputDiv.innerHTML = result.replace(/\n/g, '<br>');
+                        geminiBtn.textContent = 'Analyse générée ✨';
+                    });
+
                 });
 
                 timelineContainer.appendChild(timelineItem);
@@ -355,7 +415,7 @@
                 referencesGrid.innerHTML = '';
                 const filteredData = (filter === 'all') ? referencesData : referencesData.filter(item => item.category === filter);
 
-                filteredData.forEach(item => {
+                filteredData.forEach((item, index) => {
                     const card = document.createElement('div');
                     card.className = 'card-flip h-56 sm:h-48 rounded-lg shadow-lg';
                     card.dataset.category = item.category;
@@ -366,13 +426,31 @@
                                 <h4 class="text-lg font-bold text-stone-800">${item.name}</h4>
                                 <p class="text-sm text-amber-700">${item.source}</p>
                             </div>
-                            <div class="card-back bg-slate-700 text-white p-2 flex flex-col justify-center">
-                                <p class="text-xs sm:text-sm leading-tight text-center">${item.explanation}</p>
+                            <div class="card-back bg-slate-700 text-white p-2 flex flex-col justify-between">
+                                <div class="explanation-text text-xs sm:text-sm leading-tight text-center">${item.explanation}</div>
                                 ${item.punchline ? `<p class="mt-2 text-[10px] sm:text-xs italic opacity-80 text-center">${item.punchline}</p>` : ''}
+                                <button class="gemini-punchline-btn bg-amber-500 text-white px-2 py-1 mt-2 rounded-md text-xs font-semibold hover:bg-amber-600 transition-colors w-full flex items-center justify-center gap-1">
+                                    ✨ Analyser
+                                </button>
                             </div>
                         </div>
                     `;
                     referencesGrid.appendChild(card);
+
+                    const geminiBtn = card.querySelector('.gemini-punchline-btn');
+                    if (geminiBtn) {
+                        geminiBtn.addEventListener('click', async (e) => {
+                            e.stopPropagation(); 
+                            geminiBtn.disabled = true;
+                            const explanationDiv = card.querySelector('.explanation-text');
+                            explanationDiv.innerHTML = '<div class="flex justify-center items-center h-full"><div class="loader"></div></div>';
+
+                            const prompt = `Analyse cette punchline du rappeur français Luther : '${item.punchline}'. Explique en 2-3 phrases le double sens, la référence culturelle ('${item.source}') et la signification plus profonde dans le contexte de son œuvre.`;
+                            const result = await fetchFromGemini(prompt);
+                            explanationDiv.innerHTML = result.replace(/\n/g, '<br>');
+                            geminiBtn.style.display = 'none';
+                        });
+                    }
                 });
             }
 
